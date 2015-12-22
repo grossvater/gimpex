@@ -23,8 +23,8 @@ def gimp_cbk(args, flist):
             'comment': 1,
             'svtrans': 0
             }
-            
-        pdb.file_png_save2(img, layer, dest, name, *extra_args.values())  
+
+        pdb.file_png_save2(img, layer, dest, name, *extra_args.values())
 
     def jpeg_save(img, layer, dest, name):
         extra_args = {
@@ -46,7 +46,7 @@ def gimp_cbk(args, flist):
         'jpeg': {'save': jpeg_save},
         'jpg': {'save': jpeg_save}
     }
-        
+
     def get_ext(f):
         from os import path
 
@@ -62,14 +62,14 @@ def gimp_cbk(args, flist):
         from os import path
 
         name = path.split(path.normpath(f))[1]
-        
+
         return path.splitext(name)[0]
 
-    
+
     def convert(src, dst):
         fn = get_base(src)
         ftype = get_ext(dst)
-        
+
         finfo = supported_types.get(ftype)
 
         if not finfo:
@@ -80,16 +80,16 @@ def gimp_cbk(args, flist):
 
         try:
             layer = pdb.gimp_image_merge_visible_layers(img, 1)
-            
+
             fsave = finfo['save']
-            fsave(img, layer, dst, fn)  
+            fsave(img, layer, dst, fn)
         finally:
-            gimp.delete(img) 
+            gimp.delete(img)
 
     try:
         for fin, fout in flist:
             print('Converting {}=>{}'.format(fin, fout))
-            
+
             convert(fin, fout)
     except KeyboardInterrupt:
         print 'User interrupted.'
@@ -99,7 +99,8 @@ def gimp_cbk(args, flist):
         if debug:
             print traceback.print_exc()
         else:
-            print 'Operation not completed (pass -d / --debug switch to see more details)'
+            print 'Operation not completed (pass -d / ' \
+                  '--debug switch to see more details)'
     finally:
         pdb.gimp_quit(0)
 
@@ -114,10 +115,10 @@ def launch_gimp():
                      '--batch-interpreter', 'python-fu-eval',
                      '--batch', batch])
 
-    
+
 def craft_batch(args, flist):
     lines = inspect.getsourcelines(gimp_cbk)[0][1:]
-    lines = [ re.sub(r'^\s{4}', '', l) for l in lines ]
+    lines = [re.sub(r'^\s{4}', '', l) for l in lines]
 
     lines.insert(0, 'args = {}\n'.format(repr({'debug': args.debug})))
     lines.insert(1, 'flist = {}\n'.format(repr(flist)))
@@ -127,17 +128,19 @@ def craft_batch(args, flist):
 
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--debug', dest='debug', action='store_const', const=True)
+    parser.add_argument('-d', '--debug', dest='debug', action='store_const',
+                        const=True)
     parser.add_argument('-i', '--input', dest='input', action='append')
     parser.add_argument('-o', '--output', dest='output', action='append')
 
     args = parser.parse_args()
 
     if not args.input or not args.output \
-        or len(args.input) != len(args.output):
+            or len(args.input) != len(args.output):
         parser.error('Wrong number of arguments')
         return
 
     return args, zip(args.input, args.output)
 
 main()
+
