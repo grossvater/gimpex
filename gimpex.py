@@ -66,7 +66,7 @@ def gimp_cbk(args, flist):
         return path.splitext(name)[0]
 
 
-    def convert(src, dst):
+    def export(src, dst):
         fn = get_base(src)
         ftype = get_ext(dst)
 
@@ -90,7 +90,7 @@ def gimp_cbk(args, flist):
         for fin, fout in flist:
             print('Converting {}=>{}'.format(fin, fout))
 
-            convert(fin, fout)
+            export(fin, fout)
     except KeyboardInterrupt:
         print 'User interrupted.'
     except Exception as e:
@@ -129,9 +129,12 @@ def craft_batch(args, flist):
 def parse():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', dest='debug', action='store_const',
-                        const=True)
-    parser.add_argument('-i', '--input', dest='input', action='append')
-    parser.add_argument('-o', '--output', dest='output', action='append')
+                        const=True, help='enable debugging')
+
+    children = parser.add_subparsers()
+    imp = children.add_parser('export', help='Export .xcf files')
+    imp.add_argument('-i', '--input', dest='input', action='append')
+    imp.add_argument('-o', '--output', dest='output', action='append')
 
     args = parser.parse_args()
 
