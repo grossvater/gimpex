@@ -8,7 +8,7 @@ def main():
     launch_gimp()
 
 
-def gimp_cbk(args, flist):
+def gimp_cbk(cmd, args, flist):
     debug = args['debug']
 
     def png_save(img, layer, dest, name):
@@ -44,7 +44,7 @@ def gimp_cbk(args, flist):
     supported_types = {
         'png': {'save': png_save},
         'jpeg': {'save': jpeg_save},
-        'jpg': {'save': jpeg_save}
+        'jpg': {'save': jpeg_save},
     }
 
     def get_ext(f):
@@ -65,15 +65,31 @@ def gimp_cbk(args, flist):
 
         return path.splitext(name)[0]
 
+    def do_import(src, dst):
+        fn = get_base(src)
+        fe = get_ext(src)
+        
+        if not supported_types.has_key(fe):
+            print 'Input format {} not supported.'.format(fe)
+            return
+        
+        load_func = getattr(pdb, 'file_{}_load'.format(fe))
 
-    def export(src, dst):
+        img = load_func(src, fn)
+        try:
+            layer = pdb.gimp_image_merge_visible_layers(img, 1)
+            pdb.gimp_file_save(img, layer, dst, fn)
+        finally:
+            gimp.delete(img)
+        
+    def do_export(src, dst):
         fn = get_base(src)
         ftype = get_ext(dst)
 
         finfo = supported_types.get(ftype)
 
         if not finfo:
-            print 'Format {} not supported.'.format(ftype)
+            print 'Output format {} not supported.'.format(ftype)
             return
 
         img = pdb.gimp_file_load(src, fn)
@@ -85,12 +101,19 @@ def gimp_cbk(args, flist):
             fsave(img, layer, dst, fn)
         finally:
             gimp.delete(img)
-
+    
     try:
-        for fin, fout in flist:
-            print('Converting {}=>{}'.format(fin, fout))
+        if cmd == 'export':
+            for fin, fout in flist:
+                print('Exporting {}=>{}'.format(fin, fout))
 
-            export(fin, fout)
+                do_export(fin, fout)
+        elif cmd == 'import':
+            for fin, fout in flist:
+                print('Importing {}=>{}'.format(fin, fout))
+
+                do_import(fin, fout)
+            
     except KeyboardInterrupt:
         print 'User interrupted.'
     except Exception as e:
@@ -120,8 +143,9 @@ def craft_batch(args, flist):
     lines = inspect.getsourcelines(gimp_cbk)[0][1:]
     lines = [re.sub(r'^\s{4}', '', l) for l in lines]
 
-    lines.insert(0, 'args = {}\n'.format(repr({'debug': args.debug})))
-    lines.insert(1, 'flist = {}\n'.format(repr(flist)))
+    lines.insert(0, 'cmd = {}\n'.format(repr(args.cmd)))
+    lines.insert(1, 'args = {}\n'.format(repr({'debug': args.debug})))
+    lines.insert(2, 'flist = {}\n'.format(repr(flist)))
 
     return ''.join(lines)
 
@@ -132,12 +156,18 @@ def parse():
                         const=True, help='enable debugging')
 
     children = parser.add_subparsers()
-    imp = children.add_parser('export', help='Export .xcf files')
+    exp = children.add_parser('export', help='Export .xcf to various formats (jpeg, png)')
+    exp.add_argument('-i', '--input', dest='input', action='append')
+    exp.add_argument('-o', '--output', dest='output', action='append')
+    exp.set_defaults(cmd='export')
+    
+    imp = children.add_parser('import', help='Import .xcf from various formats (jpeg, png')
     imp.add_argument('-i', '--input', dest='input', action='append')
     imp.add_argument('-o', '--output', dest='output', action='append')
-
+    imp.set_defaults(cmd='import')
+    
     args = parser.parse_args()
-
+    
     if not args.input or not args.output \
             or len(args.input) != len(args.output):
         parser.error('Wrong number of arguments')
